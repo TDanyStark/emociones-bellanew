@@ -1,0 +1,595 @@
+---
+import { URL_BASE } from "@/config";
+---
+
+<div id="game-root" class="select-none">
+  <div class="flex flex-col md:flex-row gap-6 md:gap-10 items-start justify-between">
+
+    <!-- Left: Emotion chips -->
+    <div id="emotions-col" class="flex flex-col gap-3 w-full md:w-56 shrink-0">
+      <div class="emotion-chip cursor-grab" data-emotion="happy" draggable="true">
+        <div class="chip-inner flex items-center gap-3 px-5 py-3 rounded-2xl text-white font-bold text-xl transition-all duration-150">
+          <img src={`${URL_BASE}/icons/icon_happy_1.webp`} class="w-10 h-10 shrink-0" alt="Alegría">
+          <span>ALEGRÍA</span>
+        </div>
+      </div>
+
+      <div class="emotion-chip cursor-grab" data-emotion="calm" draggable="true">
+        <div class="chip-inner flex items-center gap-3 px-5 py-3 rounded-2xl text-white font-bold text-xl transition-all duration-150">
+          <img src={`${URL_BASE}/icons/icon_calm_1.webp`} class="w-10 h-10 shrink-0" alt="Calma">
+          <span>CALMA</span>
+        </div>
+      </div>
+
+      <div class="emotion-chip cursor-grab" data-emotion="energy" draggable="true">
+        <div class="chip-inner flex items-center gap-3 px-5 py-3 rounded-2xl text-white font-bold text-xl transition-all duration-150">
+          <img src={`${URL_BASE}/icons/icon_energy_1.webp`} class="w-10 h-10 shrink-0" alt="Energía">
+          <span>ENERGÍA</span>
+        </div>
+      </div>
+
+      <div class="emotion-chip cursor-grab" data-emotion="optimism" draggable="true">
+        <div class="chip-inner flex items-center gap-3 px-5 py-3 rounded-2xl text-white font-bold text-xl transition-all duration-150">
+          <img src={`${URL_BASE}/icons/icon_optimism_1.webp`} class="w-10 h-10 shrink-0" alt="Optimismo">
+          <span>OPTIMISMO</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Song players (populated + shuffled by JS) -->
+    <div id="songs-col" class="flex flex-col gap-3 flex-1 w-full max-w-96"></div>
+  </div>
+</div>
+
+<!-- Success Popup -->
+<div id="success-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.55)">
+  <div class="relative max-w-xl w-full">
+    <button id="success-close"
+      class="absolute -top-4 -right-4 z-10 w-10 h-10 rounded-full text-white font-bold text-lg flex items-center justify-center cursor-pointer shadow-lg"
+      style="background:#d9609a">✕</button>
+    <div id="success-box" class="rounded-3xl p-8 w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div id="success-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Fail Popup -->
+<div id="fail-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.55)">
+  <div class="relative max-w-sm w-full">
+    <button id="fail-close"
+      class="absolute -top-4 -right-4 z-10 w-10 h-10 rounded-full text-white font-bold text-lg flex items-center justify-center cursor-pointer shadow-lg"
+      style="background:#d9609a">✕</button>
+    <div class="bg-white rounded-3xl p-10 text-center w-full shadow-2xl">
+      <div class="text-5xl mb-4">🎵</div>
+      <p class="text-2xl font-bold mb-2" style="color:#772583">¡Intenta de nuevo!</p>
+      <p class="text-gray-500 mb-6 text-sm">Escucha bien las canciones e intenta de nuevo.</p>
+    </div>
+  </div>
+</div>
+
+<script define:vars={{ URL_BASE }}>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const EMOTIONS = {
+  happy:    { label: 'ALEGRÍA',   icon: `${URL_BASE}/icons/icon_happy_1.webp`,    sound: `${URL_BASE}/sounds/happy.mp3`    },
+  calm:     { label: 'CALMA',     icon: `${URL_BASE}/icons/icon_calm_1.webp`,     sound: `${URL_BASE}/sounds/calm.mp3`     },
+  energy:   { label: 'ENERGÍA',   icon: `${URL_BASE}/icons/icon_energy_1.webp`,   sound: `${URL_BASE}/sounds/energy.mp3`   },
+  optimism: { label: 'OPTIMISMO', icon: `${URL_BASE}/icons/icon_optimism_1.webp`, sound: `${URL_BASE}/sounds/optimism.mp3` },
+};
+
+const POPUP_CONTENT = {
+  happy: {
+    bg: '#772583',
+    html: `
+      <div class="flex items-start gap-4 mb-5">
+        <img src="${URL_BASE}/icons/icon_happy_1.webp" class="w-14 h-14 shrink-0" alt="">
+        <h2 style="color:#fff;font-size:1.3rem;font-weight:700;line-height:1.3">
+          BENEFICIOS EN LA <span style="color:#d787b5">QUÍMICA CEREBRAL:</span><br>SEROTONINA Y ENDORFINAS
+        </h2>
+      </div>
+      <p style="color:#fff;font-weight:700;margin-bottom:1rem">
+        El estrógeno actúa directamente en las partes del cerebro que controlan las emociones. Entre sus efectos positivos se encuentran:<sup>1</sup>
+      </p>
+      <div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="display:flex;align-items:flex-start;gap:1rem;background:rgba(255,255,255,0.15);border-radius:9999px;padding:0.6rem 1rem">
+          <img src="${URL_BASE}/icons/icon_happy_1.webp" style="width:2rem;height:2rem;flex-shrink:0" alt="">
+          <p style="color:#fff;font-size:0.875rem;margin:0">Aumenta la serotonina y sus receptores en el cerebro, lo cual es clave para mantener un buen estado de ánimo.<sup>1</sup></p>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:1rem;background:rgba(255,255,255,0.15);border-radius:9999px;padding:0.6rem 1rem">
+          <img src="${URL_BASE}/icons/icon_happy_1.webp" style="width:2rem;height:2rem;flex-shrink:0" alt="">
+          <p style="color:#fff;font-size:0.875rem;margin:0">Influye en la producción de endorfinas, las sustancias químicas del cerebro que producen sensaciones de bienestar.<sup>1</sup></p>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:1rem;background:rgba(255,255,255,0.15);border-radius:9999px;padding:0.6rem 1rem">
+          <img src="${URL_BASE}/icons/icon_happy_1.webp" style="width:2rem;height:2rem;flex-shrink:0" alt="">
+          <p style="color:#fff;font-size:0.875rem;margin:0">Ejerce un efecto neuroprotector.<sup>1</sup></p>
+        </div>
+      </div>
+      <p style="color:rgba(255,255,255,0.65);font-size:0.7rem;margin-top:1.5rem">
+        <strong>Referencia 1.</strong> Hoffman M, Powell A. The Effects of Estrogen on Women's Emotions and Mood. WebMD; 2024. Disponible en: https://n9.cl/09ner
+      </p>`
+  },
+  calm: {
+    bg: '#d9609a',
+    html: `
+      <div class="flex items-start gap-4 mb-5">
+        <img src="${URL_BASE}/icons/icon_calm_1.webp" class="w-14 h-14 shrink-0" alt="">
+        <h2 style="color:#fff;font-size:1.3rem;font-weight:700;line-height:1.3">
+          ESTABILIZACIÓN DE LAS <strong>FLUCTUACIONES HORMONALES</strong>
+        </h2>
+      </div>
+      <p style="color:#fff;margin-bottom:0.75rem">
+        <strong>En el ciclo menstrual normal, los niveles de estrógenos sufren picos repentinos (antes de la ovulación) y caídas drásticas (antes de la menstruación). Estas fluctuaciones son las que suelen desencadenar cambios en los estados de ánimo, como irritabilidad y ansiedad.</strong>
+        Al administrar una dosis constante de estrógeno natural a través de un anticonceptivo, se mantiene un nivel hormonal estable, evitando los periodos de &ldquo;abstinencia&rdquo; de estrógenos que pueden dejar a la persona más vulnerable a presentar dificultades para controlar sus emociones.<sup>1-3</sup>
+      </p>
+      <p style="color:rgba(255,255,255,0.65);font-size:0.7rem;margin-top:1.5rem">
+        <strong>Referencia 1.</strong> Denninger A, Rehbein E, Sundström-Poromaa I, et al. Estradiol, Emotion Regulation, and the Limbic System: Effects on Gray Matter Volume. Biological Psychiatry: Global Open Science. 2026;6:100709.
+        <strong>2.</strong> Hoffman M, Powell A. The Effects of Estrogen on Women's Emotions and Mood. WebMD; 2024. Disponible en: https://n9.cl/09ner
+        <strong>3.</strong> Homewood Health. Exploring the Connection Between Women's Hormonal Imbalances and Mental Health. 2024. Disponible en: https://n9.cl/bn1z3
+      </p>`
+  },
+  energy: {
+    bg: '#753bbd',
+    html: `
+      <div class="flex items-start gap-4 mb-5">
+        <img src="${URL_BASE}/icons/icon_energy_1.webp" class="w-14 h-14 shrink-0" alt="">
+        <h2 style="color:#fff;font-size:1.3rem;font-weight:700;line-height:1.3">
+          IMPACTO POSITIVO EN LA <strong>ESTRUCTURA</strong> <span style="color:#d787b5">CEREBRAL</span>
+        </h2>
+      </div>
+      <p style="color:#fff;margin-bottom:0.75rem">
+        <strong>El estrógeno influye en la plasticidad de regiones como el cuerpo estriado, que está involucrado en el procesamiento de recompensas, el estrés y la regulación emocional.</strong>
+        Los estudios sugieren que mantener niveles estables de estrógeno puede ayudar a fomentar un refinamiento estructural en estos circuitos afectivos clave, lo que podría representar una respuesta neuroplástica beneficiosa para la salud mental durante períodos de sensibilidad hormonal.<sup>1</sup>
+      </p>
+      <p style="color:rgba(255,255,255,0.65);font-size:0.7rem;margin-top:1.5rem">
+        <strong>Referencia 1.</strong> Denninger A, Rehbein E, Sundström-Poromaa I, et al. Estradiol, Emotion Regulation, and the Limbic System: Effects on Gray Matter Volume. Biological Psychiatry: Global Open Science. 2026;6:100709.
+      </p>`
+  },
+  optimism: {
+    bg: '#772583',
+    html: `
+      <div class="flex items-start gap-4 mb-5">
+        <img src="${URL_BASE}/icons/icon_optimism_1.webp" class="w-14 h-14 shrink-0" alt="">
+        <h2 style="color:#fff;font-size:1.3rem;font-weight:700;line-height:1.3">
+          REGULACIÓN <span style="color:#d787b5">EMOCIONAL</span>
+        </h2>
+      </div>
+      <p style="color:#fff;font-weight:700;margin-bottom:1rem">
+        La evidencia indica que la capacidad de una persona para controlar sus emociones está mediada por los niveles de estrógeno.<sup>1</sup>
+      </p>
+      <div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="display:flex;align-items:flex-start;gap:1rem;background:rgba(255,255,255,0.15);border-radius:9999px;padding:0.6rem 1rem">
+          <img src="${URL_BASE}/icons/icon_optimism_1.webp" style="width:2rem;height:2rem;flex-shrink:0" alt="">
+          <p style="color:#fff;font-size:0.875rem;margin:0">Los niveles estables altos de estrógeno están asociados con un uso más efectivo de la reevaluación cognitiva, que consiste en cambiar el significado de una situación negativa para reducir su impacto emocional.<sup>1</sup></p>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:1rem;background:rgba(255,255,255,0.15);border-radius:9999px;padding:0.6rem 1rem">
+          <img src="${URL_BASE}/icons/icon_optimism_1.webp" style="width:2rem;height:2rem;flex-shrink:0" alt="">
+          <p style="color:#fff;font-size:0.875rem;margin:0">Cuando el estrógeno está bajo, las personas suelen tener menos éxito al intentar regular sus emociones y pueden experimentar un afecto negativo mayor si tienden a enfocarse repetitivamente en pensamientos negativos (rumiación), pero, al tener niveles estables, se previene esta conducta.<sup>1</sup></p>
+        </div>
+      </div>
+      <p style="color:rgba(255,255,255,0.65);font-size:0.7rem;margin-top:1.5rem">
+        <strong>Referencia 1.</strong> Denninger A, Rehbein E, Sundström-Poromaa I, et al. Estradiol, Emotion Regulation, and the Limbic System: Effects on Gray Matter Volume. Biological Psychiatry: Global Open Science. 2026;6:100709.
+      </p>`
+  }
+};
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let currentAudio = null;
+let currentPlayingId = null;
+let selectedEmotion = null;
+const matched = {};
+
+// ─── AUDIO ───────────────────────────────────────────────────────────────────
+function stopCurrentAudio() {
+  if (!currentAudio) return;
+  currentAudio.pause();
+  currentAudio.currentTime = 0;
+  if (currentPlayingId) {
+    const card = document.querySelector(`.song-card[data-song="${currentPlayingId}"]`);
+    if (card) setPlayerState(card, false);
+  }
+  currentAudio = null;
+  currentPlayingId = null;
+}
+
+function playAudio(src, songId, card) {
+  if (currentPlayingId === songId) { stopCurrentAudio(); return; }
+  stopCurrentAudio();
+  const audio = new Audio(src);
+  currentAudio = audio;
+  currentPlayingId = songId;
+  setPlayerState(card, true);
+  audio.play().catch(() => {});
+
+  audio.addEventListener('timeupdate', () => {
+    const pct = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+    const bar = card.querySelector('.time-bar');
+    if (bar) bar.style.width = pct + '%';
+  });
+
+  audio.addEventListener('ended', () => {
+    setPlayerState(card, false);
+    const bar = card.querySelector('.time-bar');
+    if (bar) bar.style.width = '0%';
+    currentAudio = null;
+    currentPlayingId = null;
+  });
+}
+
+function setPlayerState(card, playing) {
+  const waveform = card.querySelector('.waveform');
+  const btn = card.querySelector('.play-btn');
+  if (waveform) waveform.classList.toggle('playing', playing);
+  if (btn) {
+    btn.innerHTML = playing
+      ? `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`
+      : `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M8 5v14l11-7z"/></svg>`;
+  }
+}
+
+// ─── WAVEFORM GENERATION ─────────────────────────────────────────────────────
+function generateBars(count = 20) {
+  let html = '';
+  for (let i = 0; i < count; i++) {
+    // Bell-curve envelope: taller in the middle, shorter at edges
+    const center = (count - 1) / 2;
+    const base = 22 + 58 * Math.exp(-0.28 * Math.pow((i - center) / (count / 4.5), 2));
+    const noise = (Math.random() - 0.5) * 24;
+    const maxH = Math.max(10, Math.min(96, base + noise));
+    const minH = Math.max(4, maxH * (0.08 + Math.random() * 0.12));
+    // Vary animation duration slightly per bar for more organic feel
+    const dur = (0.5 + Math.random() * 0.35).toFixed(3);
+    const delay = (i * 0.055).toFixed(3);
+    html += `<div class="wave-bar" style="height:${maxH.toFixed(1)}%;--min-h:${minH.toFixed(1)}%;--max-h:${maxH.toFixed(1)}%;--dur:${dur}s;animation-delay:${delay}s"></div>`;
+  }
+  return html;
+}
+
+// ─── SONG CARD CREATION ───────────────────────────────────────────────────────
+function createSongCard(songId) {
+  const div = document.createElement('div');
+  div.className = 'song-card';
+  div.dataset.song = songId;
+
+  div.innerHTML = `
+    <div class="player-row">
+      <img src="${URL_BASE}/icons/icon_music_1.webp" class="music-icon" alt="">
+
+      <div class="player-body">
+        <div class="waveform">${generateBars()}</div>
+        <div class="progress-track">
+          <div class="time-bar"></div>
+        </div>
+      </div>
+
+      <button class="play-btn" aria-label="Play/Pause">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+    </div>
+
+    <div class="drop-hint">Arrastra o toca la emoción aquí ↑</div>
+    <div class="matched-display" style="display:none"></div>
+  `;
+
+  // Play button
+  div.querySelector('.play-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const em = EMOTIONS[songId];
+    playAudio(em.sound, songId, div);
+  });
+
+  // ── Drag-and-drop target events ──
+  div.addEventListener('dragover', (e) => {
+    if (matched[songId]) return;
+    e.preventDefault();
+    div.classList.add('drag-over');
+  });
+  div.addEventListener('dragleave', () => div.classList.remove('drag-over'));
+  div.addEventListener('drop', (e) => {
+    e.preventDefault();
+    div.classList.remove('drag-over');
+    if (matched[songId]) return;
+    const emotionId = e.dataTransfer.getData('emotion');
+    if (emotionId) handleDrop(songId, emotionId, div);
+  });
+
+  // ── Click-to-place (tap interaction) ──
+  div.addEventListener('click', () => {
+    if (matched[songId] || !selectedEmotion) return;
+    handleDrop(songId, selectedEmotion, div);
+  });
+
+  return div;
+}
+
+// ─── GAME LOGIC ───────────────────────────────────────────────────────────────
+function handleDrop(songId, emotionId, songCard) {
+  if (!emotionId || matched[songId]) return;
+
+  if (songId === emotionId) {
+    // ✅ Correct
+    matched[songId] = emotionId;
+    stopCurrentAudio();
+
+    const em = EMOTIONS[emotionId];
+    const confetti = new Audio(`${URL_BASE}/sounds/confetti.mp3`);
+    confetti.play().catch(() => {});
+
+    songCard.classList.add('matched');
+    const hint = songCard.querySelector('.drop-hint');
+    if (hint) hint.style.display = 'none';
+
+    const display = songCard.querySelector('.matched-display');
+    display.innerHTML = `<img src="${em.icon}" alt=""><span>${em.label}</span>`;
+    display.style.display = 'flex';
+
+    // Disable the emotion chip
+    const chip = document.querySelector(`.emotion-chip[data-emotion="${emotionId}"]`);
+    if (chip) {
+      chip.classList.add('used');
+      chip.draggable = false;
+    }
+
+    clearSelectedEmotion();
+    setTimeout(() => showSuccessPopup(emotionId), 450);
+
+  } else {
+    // ❌ Wrong
+    clearSelectedEmotion();
+    stopCurrentAudio();
+    const fail = new Audio(`${URL_BASE}/sounds/fail.mp3`);
+    fail.play().catch(() => {});
+
+    // Shake the song card
+    songCard.classList.add('shake');
+    setTimeout(() => songCard.classList.remove('shake'), 600);
+
+    showFailPopup();
+  }
+}
+
+function clearSelectedEmotion() {
+  if (!selectedEmotion) return;
+  const chip = document.querySelector(`.emotion-chip[data-emotion="${selectedEmotion}"]`);
+  if (chip) chip.classList.remove('selected');
+  selectedEmotion = null;
+}
+
+function showSuccessPopup(emotionId) {
+  const data = POPUP_CONTENT[emotionId];
+  const overlay = document.getElementById('success-overlay');
+  const box = document.getElementById('success-box');
+  const body = document.getElementById('success-body');
+  box.style.backgroundColor = data.bg;
+  body.innerHTML = data.html;
+  overlay.classList.remove('hidden');
+}
+
+function showFailPopup() {
+  document.getElementById('fail-overlay').classList.remove('hidden');
+}
+
+// ─── TOUCH DRAG ──────────────────────────────────────────────────────────────
+let touchClone = null;
+let touchEmotion = null;
+let touchChipW = 0;
+
+function initTouchDrag(chip, emotionId) {
+  chip.addEventListener('touchstart', (e) => {
+    if (chip.classList.contains('used')) return;
+    const touch = e.touches[0];
+    touchEmotion = emotionId;
+    touchChipW = chip.offsetWidth;
+
+    // Clone the inner chip visually
+    const inner = chip.querySelector('.chip-inner');
+    touchClone = inner.cloneNode(true);
+    touchClone.style.cssText = `
+      position:fixed;z-index:9999;pointer-events:none;opacity:0.88;
+      width:${touchChipW}px;border-radius:1rem;
+      left:${touch.clientX - touchChipW / 2}px;
+      top:${touch.clientY - 30}px;
+    `;
+    document.body.appendChild(touchClone);
+    e.preventDefault();
+  }, { passive: false });
+
+  chip.addEventListener('touchmove', (e) => {
+    if (!touchClone) return;
+    const touch = e.touches[0];
+    touchClone.style.left = (touch.clientX - touchChipW / 2) + 'px';
+    touchClone.style.top  = (touch.clientY - 30) + 'px';
+    e.preventDefault();
+  }, { passive: false });
+
+  chip.addEventListener('touchend', (e) => {
+    if (touchClone) { touchClone.remove(); touchClone = null; }
+    const touch = e.changedTouches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const card = el && el.closest('.song-card');
+    if (card && touchEmotion) {
+      handleDrop(card.dataset.song, touchEmotion, card);
+    }
+    touchEmotion = null;
+    e.preventDefault();
+  }, { passive: false });
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function init() {
+  const songsCol = document.getElementById('songs-col');
+
+  // Shuffle and render song cards
+  const ids = ['happy', 'calm', 'energy', 'optimism'].sort(() => Math.random() - 0.5);
+  ids.forEach(id => songsCol.appendChild(createSongCard(id)));
+
+  // Wire up emotion chips
+  document.querySelectorAll('.emotion-chip').forEach(chip => {
+    const emotionId = chip.dataset.emotion;
+
+    // HTML5 drag
+    chip.addEventListener('dragstart', (e) => {
+      if (chip.classList.contains('used')) { e.preventDefault(); return; }
+      e.dataTransfer.setData('emotion', emotionId);
+      chip.classList.add('dragging');
+    });
+    chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+
+    // Click-to-select
+    chip.addEventListener('click', () => {
+      if (chip.classList.contains('used')) return;
+      if (selectedEmotion === emotionId) { clearSelectedEmotion(); return; }
+      clearSelectedEmotion();
+      selectedEmotion = emotionId;
+      chip.classList.add('selected');
+    });
+
+    // Touch drag
+    initTouchDrag(chip, emotionId);
+  });
+
+  // Close buttons
+  document.getElementById('success-close').addEventListener('click', () => {
+    document.getElementById('success-overlay').classList.add('hidden');
+  });
+  document.getElementById('success-overlay').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('success-overlay'))
+      document.getElementById('success-overlay').classList.add('hidden');
+  });
+
+  document.getElementById('fail-close').addEventListener('click', () => {
+    document.getElementById('fail-overlay').classList.add('hidden');
+  });
+  document.getElementById('fail-overlay').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('fail-overlay'))
+      document.getElementById('fail-overlay').classList.add('hidden');
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+<style is:global>
+/* ── Emotion chips ─────────────────────────────────────────── */
+.chip-inner {
+  background: linear-gradient(to right, #d9609a, #772583);
+  transition: filter 0.15s, transform 0.15s;
+}
+
+.emotion-chip { transition: opacity 0.3s; }
+.emotion-chip:hover:not(.used) .chip-inner  { filter: brightness(1.1); }
+.emotion-chip.selected .chip-inner          { filter: brightness(1.15); outline: 3px solid #fff; outline-offset: 2px; border-radius: 1rem; }
+.emotion-chip.dragging                      { opacity: 0.45; }
+.emotion-chip.used                          { opacity: 0.35; cursor: default; }
+
+/* ── Song cards ────────────────────────────────────────────── */
+.song-card {
+  border: 2px solid rgba(217, 96, 154, 0.4);
+  border-radius: 1rem;
+  padding: 0.6rem 0.75rem;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(6px);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  cursor: default;
+}
+.song-card.drag-over { border-color: #d9609a; box-shadow: 0 0 0 3px rgba(217,96,154,0.35); }
+.song-card.matched   { border-color: #772583; }
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%      { transform: translateX(-8px); }
+  40%      { transform: translateX(8px); }
+  60%      { transform: translateX(-5px); }
+  80%      { transform: translateX(5px); }
+}
+.song-card.shake { animation: shake 0.55s ease; }
+
+/* ── Player row ────────────────────────────────────────────── */
+.player-row { display: flex; align-items: center; gap: 0.5rem; }
+
+/* Music icon — small, like the reference */
+.music-icon { width: 1.4rem; height: 1.4rem; flex-shrink: 0; opacity: 0.85; }
+
+.player-body { flex: 1; min-width: 0; }
+
+/* ── Waveform ──────────────────────────────────────────────── */
+.waveform {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 2.75rem;
+  margin-bottom: 0.3rem;
+}
+
+/* Each bar uses CSS custom props --min-h and --max-h set by JS */
+.wave-bar {
+  flex: 1;
+  background: #d9609a;
+  border-radius: 2px 2px 1px 1px;
+  /* static height = --max-h (set inline) */
+}
+
+/* When playing: each bar oscillates between its own min and max */
+.waveform.playing .wave-bar {
+  animation: wave-pulse var(--dur, 0.65s) ease-in-out infinite;
+}
+
+@keyframes wave-pulse {
+  0%, 100% { height: var(--min-h, 8%);  }
+  50%       { height: var(--max-h, 90%); }
+}
+
+/* ── Progress bar ──────────────────────────────────────────── */
+.progress-track {
+  height: 3px;
+  background: rgba(217, 96, 154, 0.25);
+  border-radius: 9999px;
+}
+.time-bar {
+  height: 100%;
+  width: 0%;
+  background: #d9609a;
+  border-radius: 9999px;
+  transition: width 0.3s linear;
+}
+
+/* ── Play button ───────────────────────────────────────────── */
+.play-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.6);
+  color: #d9609a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.play-btn:hover { background: rgba(255, 255, 255, 0.92); }
+
+/* ── Drop hint ─────────────────────────────────────────────── */
+.drop-hint {
+  margin-top: 0.4rem;
+  text-align: center;
+  font-size: 0.68rem;
+  color: rgba(217, 96, 154, 0.6);
+  border: 1px dashed rgba(217, 96, 154, 0.3);
+  border-radius: 0.5rem;
+  padding: 0.25rem;
+}
+
+/* ── Matched emotion display ───────────────────────────────── */
+.matched-display {
+  margin-top: 0.4rem;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(to right, #d9609a, #772583);
+  border-radius: 0.75rem;
+  padding: 0.35rem 0.75rem;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+.matched-display img { width: 1.5rem; height: 1.5rem; }
+</style>
