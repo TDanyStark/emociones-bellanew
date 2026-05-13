@@ -3,6 +3,17 @@ import { URL_BASE } from "@/config";
 ---
 
 <div id="game-root" class="select-none">
+  <!-- Reset button -->
+  <div class="flex justify-end mb-4">
+    <button
+      id="game-reset-btn"
+      type="button"
+      class="rounded-full border border-[#d9609a] px-4 py-1.5 text-xs font-black uppercase tracking-wide text-[#d9609a] transition hover:bg-[#d9609a] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9609a]"
+    >
+      Reiniciar
+    </button>
+  </div>
+
   <div class="flex flex-col md:flex-row gap-6 md:gap-10 items-start justify-between">
 
     <!-- Left: Emotion chips -->
@@ -66,6 +77,35 @@ import { URL_BASE } from "@/config";
     </div>
   </div>
 </div>
+
+<!-- Win Popup -->
+<div id="win-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.55)">
+  <div class="relative max-w-sm w-full">
+    <div class="rounded-3xl p-8 text-center w-full shadow-2xl text-white" style="background:linear-gradient(135deg,#772583,#d9609a)">
+      <div class="text-5xl mb-4">🎉</div>
+      <h2 class="text-3xl font-black leading-none mb-3">¡Lo lograste!</h2>
+      <p id="win-attempts-text" class="text-lg font-semibold mb-6 opacity-90"></p>
+      <div id="win-perfect-badge" class="mb-5 rounded-full px-4 py-1.5 text-sm font-black uppercase tracking-wide" style="background:rgba(255,255,255,0.25);display:none">
+        ¡Puntaje perfecto! 🏆
+      </div>
+      <div class="flex flex-col gap-3">
+        <button
+          id="win-restart"
+          type="button"
+          class="rounded-full px-8 py-3 text-base font-black uppercase text-[#772583] shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+          style="background:#ffffff"
+        >
+          Jugar de nuevo
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  import confetti from "canvas-confetti";
+  window.quizConfetti = confetti;
+</script>
 
 <script define:vars={{ URL_BASE }}>
 // ─── DATA ────────────────────────────────────────────────────────────────────
@@ -171,11 +211,17 @@ const POPUP_CONTENT = {
   }
 };
 
+// ─── BRAND COLORS ─────────────────────────────────────────────────────────────
+var CONFETTI_COLORS = ["#d9609a", "#772583", "#ffffff"];
+
 // ─── STATE ───────────────────────────────────────────────────────────────────
 let currentAudio = null;
 let currentPlayingId = null;
 let selectedEmotion = null;
 const matched = {};
+let wrongAttempts = 0;
+let confettiTimer = null;
+let pendingWin = false;
 
 // ─── AUDIO ───────────────────────────────────────────────────────────────────
 function stopCurrentAudio() {
@@ -248,6 +294,7 @@ function createSongCard(songId) {
   const div = document.createElement('div');
   div.className = 'song-card';
   div.dataset.song = songId;
+  div.style.cursor = 'pointer';
 
   div.innerHTML = `
     <div class="player-row">
@@ -260,23 +307,18 @@ function createSongCard(songId) {
         </div>
       </div>
 
-      <button class="play-btn" aria-label="Play/Pause">
+      <div class="play-btn" aria-label="Play/Pause" role="img">
         <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M8 5v14l11-7z"/></svg>
-      </button>
+      </div>
     </div>
 
     <div class="drop-hint">Arrastra o toca la emoción aquí ↑</div>
     <div class="matched-display" style="display:none"></div>
   `;
 
-  // Play button
-  div.querySelector('.play-btn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    const em = EMOTIONS[songId];
-    playAudio(em.sound, songId, div);
-  });
-
   // ── Drag-and-drop target events ──
+  let dropJustHappened = false;
+
   div.addEventListener('dragover', (e) => {
     if (matched[songId]) return;
     e.preventDefault();
@@ -288,13 +330,22 @@ function createSongCard(songId) {
     div.classList.remove('drag-over');
     if (matched[songId]) return;
     const emotionId = e.dataTransfer.getData('emotion');
-    if (emotionId) handleDrop(songId, emotionId, div);
+    if (emotionId) {
+      dropJustHappened = true;
+      setTimeout(() => { dropJustHappened = false; }, 300);
+      handleDrop(songId, emotionId, div);
+    }
   });
 
-  // ── Click-to-place (tap interaction) ──
+  // ── Unified click: drop emotion if selected, otherwise play/pause ──
   div.addEventListener('click', () => {
-    if (matched[songId] || !selectedEmotion) return;
-    handleDrop(songId, selectedEmotion, div);
+    if (dropJustHappened) return;
+    if (!matched[songId] && selectedEmotion) {
+      handleDrop(songId, selectedEmotion, div);
+      return;
+    }
+    const em = EMOTIONS[songId];
+    playAudio(em.sound, songId, div);
   });
 
   return div;
@@ -310,8 +361,10 @@ function handleDrop(songId, emotionId, songCard) {
     stopCurrentAudio();
 
     const em = EMOTIONS[emotionId];
-    const confetti = new Audio(`${URL_BASE}/sounds/confetti.mp3`);
-    confetti.play().catch(() => {});
+    const sound = new Audio(`${URL_BASE}/sounds/confetti.mp3`);
+    sound.play().catch(() => {});
+
+    launchSideConfetti();
 
     songCard.classList.add('matched');
     const hint = songCard.querySelector('.drop-hint');
@@ -329,10 +382,14 @@ function handleDrop(songId, emotionId, songCard) {
     }
 
     clearSelectedEmotion();
-    setTimeout(() => showSuccessPopup(emotionId), 450);
+    setTimeout(() => {
+      showSuccessPopup(emotionId);
+      checkWin();
+    }, 450);
 
   } else {
     // ❌ Wrong
+    wrongAttempts++;
     clearSelectedEmotion();
     stopCurrentAudio();
     const fail = new Audio(`${URL_BASE}/sounds/fail.mp3`);
@@ -365,6 +422,82 @@ function showSuccessPopup(emotionId) {
 
 function showFailPopup() {
   document.getElementById('fail-overlay').classList.remove('hidden');
+}
+
+// ─── CONFETTI ─────────────────────────────────────────────────────────────────
+function launchSideConfetti() {
+  const confetti = window.quizConfetti;
+  if (!confetti) return;
+  confetti({ particleCount: 70, spread: 55, angle: 60,  origin: { x: 0, y: 0.55 }, colors: CONFETTI_COLORS });
+  confetti({ particleCount: 70, spread: 55, angle: 120, origin: { x: 1, y: 0.55 }, colors: CONFETTI_COLORS });
+}
+
+function launchPerfectFinishConfetti() {
+  const confetti = window.quizConfetti;
+  if (!confetti) return;
+  const end = Date.now() + 3000;
+  clearInterval(confettiTimer);
+  confettiTimer = setInterval(() => {
+    confetti({
+      particleCount: 55,
+      spread: 360,
+      startVelocity: 32,
+      origin: { x: Math.random(), y: Math.random() * 0.55 },
+      colors: CONFETTI_COLORS,
+    });
+    const burst = new Audio(`${URL_BASE}/sounds/confetti.mp3`);
+    burst.volume = 0.5;
+    burst.play().catch(() => {});
+    if (Date.now() > end) clearInterval(confettiTimer);
+  }, 250);
+}
+
+// ─── WIN / RESET ──────────────────────────────────────────────────────────────
+function checkWin() {
+  if (Object.keys(matched).length < 4) return;
+  const isPerfect = wrongAttempts === 0;
+  const attemptsText = isPerfect
+    ? '¡Emparejaste todo a la primera!'
+    : wrongAttempts === 1
+      ? 'Tuviste 1 intento fallido'
+      : `Tuviste ${wrongAttempts} intentos fallidos`;
+  document.getElementById('win-attempts-text').textContent = attemptsText;
+  const badge = document.getElementById('win-perfect-badge');
+  badge.style.display = isPerfect ? 'inline-block' : 'none';
+  // Don't show win popup yet — wait until the user closes the last success popup
+  pendingWin = true;
+}
+
+function showWinPopup() {
+  pendingWin = false;
+  document.getElementById('win-overlay').classList.remove('hidden');
+  document.getElementById('win-overlay').classList.add('flex');
+  if (wrongAttempts === 0) launchPerfectFinishConfetti();
+}
+
+function resetGame() {
+  clearInterval(confettiTimer);
+  stopCurrentAudio();
+  // Reset state
+  Object.keys(matched).forEach(k => delete matched[k]);
+  wrongAttempts = 0;
+  selectedEmotion = null;
+  pendingWin = false;
+  // Hide popups
+  document.getElementById('win-overlay').classList.add('hidden');
+  document.getElementById('win-overlay').classList.remove('flex');
+  document.getElementById('success-overlay').classList.add('hidden');
+  document.getElementById('fail-overlay').classList.add('hidden');
+  // Re-render songs col
+  const songsCol = document.getElementById('songs-col');
+  songsCol.innerHTML = '';
+  const ids = ['happy', 'calm', 'energy', 'optimism'].sort(() => Math.random() - 0.5);
+  ids.forEach(id => songsCol.appendChild(createSongCard(id)));
+  // Re-enable chips
+  document.querySelectorAll('.emotion-chip').forEach(chip => {
+    chip.classList.remove('used', 'selected', 'dragging');
+    chip.draggable = true;
+  });
 }
 
 // ─── TOUCH DRAG ──────────────────────────────────────────────────────────────
@@ -447,12 +580,13 @@ function init() {
   });
 
   // Close buttons
-  document.getElementById('success-close').addEventListener('click', () => {
+  function closeSuccessPopup() {
     document.getElementById('success-overlay').classList.add('hidden');
-  });
+    if (pendingWin) showWinPopup();
+  }
+  document.getElementById('success-close').addEventListener('click', closeSuccessPopup);
   document.getElementById('success-overlay').addEventListener('click', (e) => {
-    if (e.target === document.getElementById('success-overlay'))
-      document.getElementById('success-overlay').classList.add('hidden');
+    if (e.target === document.getElementById('success-overlay')) closeSuccessPopup();
   });
 
   document.getElementById('fail-close').addEventListener('click', () => {
@@ -461,6 +595,15 @@ function init() {
   document.getElementById('fail-overlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('fail-overlay'))
       document.getElementById('fail-overlay').classList.add('hidden');
+  });
+
+  // Reset button
+  document.getElementById('game-reset-btn').addEventListener('click', resetGame);
+
+  // Win popup restart
+  document.getElementById('win-restart').addEventListener('click', resetGame);
+  document.getElementById('win-overlay').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('win-overlay')) resetGame();
   });
 }
 
