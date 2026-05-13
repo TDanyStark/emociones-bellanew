@@ -2,95 +2,38 @@
 import Header from "@/components/Header.astro";
 import { URL_BASE } from "@/config";
 import Layout from "@/layouts/Layout.astro";
+import GameApp from "@/components/Game.astro";
 ---
 
 <Layout>
   <div
     class="min-h-screen bg-right lg:bg-center lg:bg-cover"
-    style={`background-image: url(${URL_BASE}/images/bg_home.webp);`}
+    style={`background-image: url(${URL_BASE}/images/bg_game.webp);`}
   >
     <div class="min-h-screen flex-1 flex flex-col max-w-7xl mx-auto">
       <Header />
-      <main class="flex-1">
-        <div
-          class="flex flex-col items-start justify-center h-full gap-6 p-4 md:p-6"
-        >
-          <h1 class="flex flex-col leading-none">
-            <span
-              class="flex flex-wrap items-center gap-2 text-base font-medium text-purple-dark mb-3"
-            >
-              DESCUBRE CÓMO LA
-              <span
-                class="bg-pink-light text-white font-bold px-4 py-1 rounded-full text-sm"
-              >
-                ESTABILIDAD HORMONAL
-              </span>
-            </span>
-            <span
-              class="text-4xl md:text-5xl text-purple-dark font-medium leading-tight"
-              >CONTRIBUYE A LA</span
-            >
-            <span
-              class="text-5xl md:text-7xl text-purple-dark font-bold leading-none"
-              >REGULACIÓN</span
-            >
-            <span
-              class="text-5xl md:text-7xl text-pink-light font-bold leading-none"
-              >EMOCIONAL.</span
-            >
-          </h1>
-
-          <div class="relative">
-            <a
-              href="#"
-              class="flex items-center gap-2 bg-pink-light text-white py-3 px-8 text-4xl font-bold rounded-full mt-2 w-max hover:scale-105 transition-transform duration-200"
-            >
-              <img
-                class="h-12"
-                src={`${URL_BASE}/icons/icon_play_1.webp`}
-                alt="Botón Jugar"
-              />
-              JUGAR
-            </a>
-            <div class="absolute -bottom-10 -left-10 animate-bounce-diagonal pointer-events-none">
-              <img
-                class="w-16 -rotate-45"
-                src={`${URL_BASE}/icons/icon_arrow.webp`}
-                alt="Icono Flecha"
-              />
-            </div>
-          </div>
+      <main class="flex-1 p-4 md:p-6 max-w-4xl mx-auto">
+        <div class="flex gap-4 items-center">
+          <img class="h-24" src={`${URL_BASE}/icons/icon_flag_1.webp`} alt="Game Image">
+          <p class="text-xl text-balance">
+            Arrastra cada emoticón hacia el ritmo musical que creas que representa la emoción y descubre <strong class="font-bold text-purple-dark">cómo un anticonceptivo con un estrógeno natural ayuda a mantener la estabilidad hormonal, que es clave para la regulación emocional.</strong>
+          </p>
+        </div>
+        <div>
+          <GameApp />
         </div>
       </main>
       <footer class="flex justify-between items-end p-4 md:p-6">
         <div class="w-1/2">
-          <div class="flex justify-center items-center gap-4 max-w-lg">
-            <img
-              class="h-20"
-              src={`${URL_BASE}/images/qr_home_1.webp`}
-              alt="QR Code"
-            />
-            <p class="text-balance text-xs">
-              PARA ACCEDER A LA INFORMACIÓN DE SEGURIDAD Y DEL PRODUCTO EN ESTE
-              MATERIAL, POR FAVOR INGRESAR A: <a
-                href="https://co.medicinespro.abbott/productos"
-                target="_blank"
-                rel="noopener noreferrer">CO.MEDICINESPRO.ABBOTT/PRODUCTOS</a
-              >
-            </p>
-          </div>
           <p class="text-xs">
-            BELLANEW: RS INVIMA 2019M_0018900. INDICACIÓN: ANTICONCEPCIÓN
-            HORMONAL.
-          </p>
-          <p class="text-xs mt-10">
             MATERIAL EXCLUSIVO PARA FARMACIAS <strong>CO-26-0506</strong>
           </p>
         </div>
+
         <div class="w-1/2 flex justify-end">
           <img
-            class="h-20"
-            src={`${URL_BASE}/logos/logo_natural_white.webp`}
+            class="h-8"
+            src={`${URL_BASE}/logos/logo_natural_purple.webp`}
             alt="Logo Abbott"
           />
         </div>
