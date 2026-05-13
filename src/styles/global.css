@@ -1,1 +1,33 @@
 @import "tailwindcss";
+
+@font-face {
+  font-family: "Brandon";
+  src: url("/apps/abbott/emociones-bellanew/fonts/Brandon_reg.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Brandon";
+  src: url("/apps/abbott/emociones-bellanew/fonts/Brandon_blk.woff") format("woff");
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Brandon";
+  src: url("/apps/abbott/emociones-bellanew/fonts/Brandon_light.woff") format("woff");
+  font-weight: 300;
+  font-style: normal;
+}
+
+@theme{
+  --color-purple-light: #753bbd;
+  --color-purple-dark: #772583;
+  --color-pink-light: #d787b5;
+
+  --font-brandon: "Brandon", sans-serif;
+  --font-georgia: Georgia, serif;
+
+  --breakpoint-xs: 26rem;
+}
